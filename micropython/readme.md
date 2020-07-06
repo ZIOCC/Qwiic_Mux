@@ -1,47 +1,47 @@
 #### Usage
-This library can control up to 4 DC motors by I2C interface. The I2C usually can't support big current for motors, so please use extenal power for the driver board.
-
+When you need to put more than 1 same I2C address device, usually you will need to use two different I2C port from MCU, or you can choose this Multipluxer to solve this I2C address conflict issue.
 
 
 #### Demo code:
-The following demo code will slowly speed up the motor, everytime the motor will go forward first, then go back.
+In this demo code, I used two ToF sensors, you can change to other I2C devices for the ToF part. 
+
 ```  
 from machine import Pin,I2C
-import qwiic_motor
+import mux
+import rfd77402
 
+i2c = I2C(sda=Pin("Y10"), scl=Pin("Y9"), freq =50000)
 
-i2c = I2C(sda=Pin("Y10"), scl=Pin("Y9"))
 print(i2c.scan())
+mux = mux.MUX(i2c,0x70)
+tof = rfd77402.RFD77402(i2c,0x4C)
 
-mt = qwiic_motor.DCMOTOR(i2c=i2c, addr=0x40, freq=1000)
-pyb.delay(1000)
+#ToF initiation
+mux.enable_mux_port(0)
+tof.begin()
+pyb.delay(100)
+mux.disable_mux_port(0)
+mux.enable_mux_port(1)
+tof.begin()
+pyb.delay(100)
+mux.disable_mux_port(1)
 
 while True:
-
-    for i in range(0,100):
-        mt.go_ahead(0)
-        mt.speed(0,i)
-        print("cw speed:" + str(i))
-        pyb.delay(1000)
-        mt.go_back(0)
-        mt.speed(0,i)
-        print("ccw speed:" + str(i))
-        pyb.delay(1000)
-    mt.stop(0)
-    pyb.delay(1000)
+    mux.enable_mux_port(0)
+    tof.takeMeasurement()
+    t = tof.getDistance()
+    print("tof 0: " + str(t))
+    mux.disable_mux_port(0)
+    # pyb.delay(50)
+    mux.enable_mux_port(1)
+    tof.takeMeasurement()
+    t = tof.getDistance()
+    print("tof 1: " + str(t))
+    mux.disable_mux_port(1)
+    # pyb.delay(50)
 
 ```  
 
-#### Note:
-1. go_ahead() will not make the motor move, it just sets a direction, you need to use speed() method to add speed.
-2. When the speed is close to 0, ususally the motor will not move.
-3. Motor name on the board and relavent number.
-Motor Name | Motor NO. |
- ---- | -----
-A101  | 0
-B101  | 1
-A201|2
-b201|3
-
 #### Product link:
-[Qwiic DC motor driver board](https://www.smart-prototyping.com/Zio-4-DC-Motor-Controller.html)
+[Zio Qwiic Mux (8 multiplexed Qwiic I2C Busses)](https://www.smart-prototyping.com/Zio-Qwiic-Mux.html)
+[Zio TOF Distance Sensor RFD77402 (Qwiic, 10 to 200cm)](https://www.smart-prototyping.com/Zio-TOF-Distance-Sensor-RFD77402.html)
